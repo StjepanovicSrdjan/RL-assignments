@@ -37,20 +37,17 @@ class PolicyIteration:
         :return:
         """
         # TODO: Compute P_pi[s', s] = P(s' | s) when acting according to self.policy
-        r_pi = np.einsum('sa,sa->s', self.r, self.policy)  # r_pi[s] = Σ_a π(s, a) * r(s, a)
-        P_pi = np.einsum('tsa,sa->ts', self.P, self.policy)  # P_pi[s', s] = Σ_a π(s, a) * P(s' | s, a)
+        r_pi = np.einsum('sa,sa->s', self.r, self.policy)  
+        P_pi = np.einsum('tsa,sa->ts', self.P, self.policy)
 
-        # Initialize V arbitrarily for all states
-        v = np.zeros(self.num_states)  # Vold(s) in pseudocode
+        v = np.zeros(self.num_states) 
 
         while True:
-            delta = 0  # ∆ in pseudocode
-            v_old = v.copy()  # Vold(s) ← V(s)
+            delta = 0 
+            v_old = v.copy() 
 
-            # Update V(s) for all states using the precomputed P_pi and r_pi
             v = r_pi + gamma * np.dot(P_pi.T, v_old)
 
-            # Track the maximum change (convergence condition)
             delta = np.max(np.abs(v - v_old))
 
             if delta < epsilon:
@@ -143,8 +140,14 @@ class PolicyIteration:
 if __name__ == '__main__':
     # If you want to see the agent in action, set render=True
     policy_iteration = PolicyIteration(render=False)
-    for gamma in [0.95, 1.0]:
-        pi_star, v_star, q_star = policy_iteration.policy_improvement(gamma=gamma)
-        test_rewards = policy_iteration.test_policy(num_episodes=1000)
-        plot_frozenlake_policy_iteration_results(policy_iteration, gamma, test_rewards,
+    rewards = []
+    episodes = [10, 100, 1000, 10000]
+    for e in episodes:
+        pi_star, v_star, q_star = policy_iteration.policy_improvement(gamma=1.0)
+        test_rewards = policy_iteration.test_policy(num_episodes=e)
+        rewards.append(test_rewards)
+        plot_frozenlake_policy_iteration_results(policy_iteration, 1.0, test_rewards,
                                                  v_star, q_star, savefig=True)
+
+    for e, r in zip(episodes, rewards):
+        print(f'Num Episodes: {e}, Mean Reward: {np.mean(r)}')
