@@ -36,19 +36,24 @@ class PolicyIteration:
         :param epsilon: stop evaluation if delta < epsilon
         :return:
         """
-
         # TODO: Compute P_pi[s', s] = P(s' | s) when acting according to self.policy
-        P_pi = np.einsum('ijk,ik->ij', self.P, self.policy) 
+        r_pi = np.einsum('sa,sa->s', self.r, self.policy)  # r_pi[s] = Σ_a π(s, a) * r(s, a)
+        P_pi = np.einsum('tsa,sa->ts', self.P, self.policy)  # P_pi[s', s] = Σ_a π(s, a) * P(s' | s, a)
 
-        # TODO: Compute r_pi[s] = expected immediate reward in state s when acting according to self.policy
-        r_pi = np.sum(self.policy * self.r, axis=1) 
+        # Initialize V arbitrarily for all states
+        v = np.zeros(self.num_states)  # Vold(s) in pseudocode
 
-        v = np.zeros(self.num_states)
-        # TODO: Implement iterative policy evaluation using P_pi and r_pi and run until convergence
         while True:
-            v_old = v.copy()
-            v = r_pi + gamma * P_pi @ v  # Bellman update for policy evaluation
-            if np.max(np.abs(v - v_old)) < epsilon:  # Check for convergence
+            delta = 0  # ∆ in pseudocode
+            v_old = v.copy()  # Vold(s) ← V(s)
+
+            # Update V(s) for all states using the precomputed P_pi and r_pi
+            v = r_pi + gamma * np.dot(P_pi.T, v_old)
+
+            # Track the maximum change (convergence condition)
+            delta = np.max(np.abs(v - v_old))
+
+            if delta < epsilon:
                 break
 
         return v
@@ -65,8 +70,7 @@ class PolicyIteration:
 
         # TODO: convert v function to Q function
         # Hint: You'll need the MDP dynamics stored in self.P and self.r
-        Q = ...
-
+        Q = self.r + gamma * np.einsum('tsa,t->sa', self.P, v)
         assert Q.shape == (self.num_states, self.num_actions)
         return Q
 
@@ -87,7 +91,8 @@ class PolicyIteration:
             Q = self.compute_Q_from_v(v, gamma)
 
             # TODO: Improve policy (i.e., create a new one) by acting greedily w.r.t. Q
-            self.policy = ...
+            self.policy = np.zeros_like(self.policy)
+            self.policy[np.arange(self.num_states), np.argmax(Q, axis=1)] = 1.0
 
             if np.array_equal(policy_old, self.policy):
                 break
